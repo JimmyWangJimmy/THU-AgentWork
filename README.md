@@ -1,0 +1,48 @@
+# THU-AgentWork
+
+This repository stores data and scripts for the first step of the project:
+fetching **2025 annual report PDFs** for A-share listed companies (SSE, SZSE, BSE).
+
+## What has been done
+
+1. Created a crawler script:
+   - `scripts/fetch_annual_reports_2025.py`
+2. Implemented the workflow:
+   - query CNINFO announcements API (`/new/hisAnnouncement/query`)
+   - filter records containing `2025年年度报告` and excluding `摘要`
+   - deduplicate by `secCode + report_year(2025)`, keep latest `announcementTime`
+   - download PDFs concurrently with retry/backoff and resume support
+3. Downloaded an initial verified sample run into:
+   - `reports_raw/<stock_code>_<company_name>/2025/<announcement_id>.pdf`
+4. Generated CSV outputs:
+   - `reports_raw/download_manifest_2025.csv`
+   - `reports_raw/download_failures_2025.csv`
+
+## Directory layout
+
+- `reports_raw/`: downloaded annual report PDFs and CSV logs
+- `parsed_csv/`: parsed CSV outputs (next phase)
+- `scripts/`: crawler and utility scripts
+
+## Run the crawler
+
+```bash
+python3 scripts/fetch_annual_reports_2025.py \
+  --start-date 2025-01-01 \
+  --end-date 2026-12-31 \
+  --out-dir reports_raw \
+  --max-workers 4 \
+  --retry 3
+```
+
+Optional test mode (small sample):
+
+```bash
+python3 scripts/fetch_annual_reports_2025.py --max-pages 2
+```
+
+## Notes
+
+- Data source is CNINFO (official disclosure platform).
+- This phase only handles downloading and traceable logging.
+- PDF parsing to structured CSV fields will be implemented in the next phase.

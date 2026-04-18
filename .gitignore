@@ -1,0 +1,5 @@
+.codex_pdf_venv/
+tmp/
+__pycache__/
+*.pyc
+大作业要求(1).pdf
