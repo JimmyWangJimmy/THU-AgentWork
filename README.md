@@ -55,3 +55,9 @@ python3 scripts/fetch_annual_reports_2025.py --max-pages 2
   - after full crawl ends, rerun the crawler once to refresh:
     - `reports_raw/download_manifest_2025.csv`
     - `reports_raw/download_failures_2025.csv`
+- 2026-04-18 (continued):
+  - remote branch synced to commit `f2aa4f8` after resolving push timeout with smaller batches.
+  - crawler networking improved to avoid TLS handshake stalls:
+    - disabled system proxy auto-discovery in urllib opener
+    - added periodic page-fetch progress logs
+  - resumed segmented crawl and increased local PDF count to 669.

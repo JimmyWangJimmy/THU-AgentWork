@@ -22,7 +22,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Tuple
 from urllib.parse import urlencode, urljoin
-from urllib.request import Request, urlopen
+from urllib.request import ProxyHandler, Request, build_opener
 
 
 API_URL = "https://www.cninfo.com.cn/new/hisAnnouncement/query"
@@ -39,6 +39,9 @@ DEFAULT_HEADERS = {
         "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
     ),
 }
+
+# Disable system proxy auto-discovery to avoid sporadic TLS handshake stalls.
+HTTP_OPENER = build_opener(ProxyHandler({}))
 
 INVALID_CHARS = re.compile(r'[\\/:*?"<>|]+')
 EM_TAG = re.compile(r"</?em>")
@@ -81,7 +84,7 @@ def post_json_with_retry(payload: Dict[str, str], retries: int, timeout: int) ->
     for attempt in range(retries + 1):
         try:
             req = Request(API_URL, data=encoded, headers=DEFAULT_HEADERS, method="POST")
-            with urlopen(req, timeout=timeout) as resp:
+            with HTTP_OPENER.open(req, timeout=timeout) as resp:
                 body = resp.read().decode("utf-8", errors="ignore")
                 return json.loads(body)
         except Exception as exc:  # noqa: BLE001
@@ -97,11 +100,12 @@ def get_with_retry(url: str, retries: int, timeout: int) -> bytes:
         "User-Agent": DEFAULT_HEADERS["User-Agent"],
         "Referer": SEARCH_REFERER,
         "Accept": "application/pdf,*/*",
+        "Connection": "close",
     }
     for attempt in range(retries + 1):
         try:
             req = Request(url, headers=headers, method="GET")
-            with urlopen(req, timeout=timeout) as resp:
+            with HTTP_OPENER.open(req, timeout=timeout) as resp:
                 content = resp.read()
                 if not content:
                     raise RuntimeError("Empty content")
@@ -172,6 +176,10 @@ def fetch_candidate_announcements(
         announcements = data.get("announcements") or []
         total_pages = int(data.get("totalpages") or 0)
         all_announcements.extend(announcements)
+
+        if page_num == 1 or page_num % 20 == 0:
+            total_text = str(total_pages) if total_pages else "?"
+            print(f"[fetch] page {page_num}/{total_text}, cumulative={len(all_announcements)}")
 
         if not announcements:
             break
