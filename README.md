@@ -46,3 +46,12 @@ python3 scripts/fetch_annual_reports_2025.py --max-pages 2
 - Data source is CNINFO (official disclosure platform).
 - This phase only handles downloading and traceable logging.
 - PDF parsing to structured CSV fields will be implemented in the next phase.
+
+## Progress log
+
+- 2026-04-18 (full-run in progress):
+  - continued full crawl and downloaded 624 report PDFs to `reports_raw/` (~1.9G).
+  - switched to batch push strategy: push current snapshot first, then resume crawling.
+  - after full crawl ends, rerun the crawler once to refresh:
+    - `reports_raw/download_manifest_2025.csv`
+    - `reports_raw/download_failures_2025.csv`
