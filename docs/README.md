@@ -9,5 +9,5 @@ This directory stores project documentation that should remain under version con
 ## Notes
 
 - Runtime logs are not stored here.
-- Large raw data files remain under `reports_raw/`.
+- Large raw data files remain under `reports_raw/companies/`.
 - Parsed outputs should remain under `parsed_csv/`.

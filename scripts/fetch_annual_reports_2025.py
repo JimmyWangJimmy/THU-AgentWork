@@ -2,9 +2,9 @@
 """Fetch 2025 A-share annual report PDFs from CNINFO.
 
 Output:
-1) reports_raw/<stock_code>_<company_name>/2025/<announcement_id>.pdf
-2) reports_raw/download_manifest_2025.csv
-3) reports_raw/download_failures_2025.csv
+1) reports_raw/companies/<shard>/<stock_code>_<company_name>/2025/<announcement_id>.pdf
+2) reports_raw/manifests/download_manifest_2025.csv
+3) reports_raw/failures/download_failures_2025.csv
 """
 
 from __future__ import annotations
@@ -46,6 +46,24 @@ HTTP_OPENER = build_opener(ProxyHandler({}))
 INVALID_CHARS = re.compile(r'[\\/:*?"<>|]+')
 EM_TAG = re.compile(r"</?em>")
 REPORT_PATTERN = re.compile(r"(20\d{2})年年度报告")
+SHARD_LABELS = {
+    "000": "000_sz_main",
+    "001": "001_sz_main",
+    "002": "002_sz_main",
+    "003": "003_sz_main",
+    "200": "200_sz_b",
+    "201": "201_sz_b",
+    "300": "300_chinext",
+    "301": "301_chinext",
+    "600": "600_sh_main",
+    "601": "601_sh_main",
+    "603": "603_sh_main",
+    "605": "605_sh_main",
+    "688": "688_star",
+    "689": "689_star",
+    "900": "900_sh_b",
+    "920": "920_bse",
+}
 
 
 @dataclass
@@ -149,6 +167,11 @@ def sanitize_component(name: str) -> str:
     value = re.sub(r"\s+", "_", value)
     value = value.strip("._")
     return value or "UNKNOWN"
+
+
+def shard_dir_for_code(sec_code: str) -> str:
+    prefix = sec_code[:3]
+    return SHARD_LABELS.get(prefix, f"{prefix}_other")
 
 
 def to_iso_time(ms: int) -> str:
@@ -271,7 +294,8 @@ def dedupe_latest(records: Iterable[ReportRecord]) -> List[ReportRecord]:
 
 def build_target_path(out_dir: Path, rec: ReportRecord) -> Path:
     company_dir_name = f"{rec.sec_code}_{sanitize_component(rec.sec_name)}"
-    return out_dir / company_dir_name / "2025" / f"{rec.announcement_id}.pdf"
+    shard_dir_name = shard_dir_for_code(rec.sec_code)
+    return out_dir / "companies" / shard_dir_name / company_dir_name / "2025" / f"{rec.announcement_id}.pdf"
 
 
 def write_csv(path: Path, fieldnames: List[str], rows: List[Dict[str, str]]) -> None:
@@ -379,8 +403,8 @@ def main() -> None:
     )
 
     manifest_suffix = args.manifest_suffix or ""
-    manifest_path = out_dir / f"download_manifest_2025{manifest_suffix}.csv"
-    failures_path = out_dir / f"download_failures_2025{manifest_suffix}.csv"
+    manifest_path = out_dir / "manifests" / f"download_manifest_2025{manifest_suffix}.csv"
+    failures_path = out_dir / "failures" / f"download_failures_2025{manifest_suffix}.csv"
 
     write_csv(
         manifest_path,

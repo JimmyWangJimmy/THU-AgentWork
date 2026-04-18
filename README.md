@@ -23,7 +23,10 @@ THU-AgentWork/
 ├── README.md                     # 中英双语项目说明
 ├── docs/                         # 项目文档
 ├── parsed_csv/                   # 后续解析结果目录
-├── reports_raw/                  # 原始年报 PDF 与抓取清单
+├── reports_raw/
+│   ├── companies/                # 分层后的公司年报 PDF
+│   ├── manifests/                # 下载成功清单
+│   └── failures/                 # 下载失败清单
 ├── scripts/                      # 抓取与辅助脚本
 └── tmp/                          # 本地临时目录（已忽略）
 ```
@@ -32,22 +35,30 @@ THU-AgentWork/
 - `scripts/fetch_annual_reports_2025.py`：主抓取脚本
 - `scripts/run_parallel_fetch_2025.sh`：并行抓取辅助脚本
 - `scripts/push_untracked_pdf_batch.sh`：分批提交/推送原始 PDF 的辅助脚本
-- `reports_raw/`：保存 PDF、manifest、failure CSV
+- `reports_raw/companies/`：保存分层后的 PDF
+- `reports_raw/manifests/`：保存 manifest CSV
+- `reports_raw/failures/`：保存 failures CSV
 - `parsed_csv/`：为下一阶段 PDF 解析结果预留
 - `docs/`：保存设计文档、说明文档
 
-如果后续对 `reports_raw/companies/` 做分桶整理，建议目录直接写成带说明的形式：
+`reports_raw/companies/` 当前按股票代码前缀分层，目录直接带板块说明：
 
 ```text
 companies/
 ├── 000_sz_main/    # 深市主板（常见 000 前缀）
 ├── 001_sz_main/    # 深市主板（001 前缀）
 ├── 002_sz_main/    # 深市原中小板代码段，现并入主板口径
+├── 003_sz_main/    # 深市主板（003 前缀）
+├── 200_sz_b/       # 深市 B 股
+├── 201_sz_b/       # 深市 B 股（少量特殊代码）
 ├── 300_chinext/    # 创业板
+├── 301_chinext/    # 创业板（301 前缀）
 ├── 600_sh_main/    # 沪市主板
 ├── 601_sh_main/    # 沪市主板
 ├── 603_sh_main/    # 沪市主板
+├── 605_sh_main/    # 沪市主板（605 前缀）
 ├── 688_star/       # 科创板
+├── 689_star/       # 科创板/相关特殊代码
 ├── 900_sh_b/       # 沪市 B 股
 └── 920_bse/        # 北交所
 ```
@@ -64,8 +75,8 @@ companies/
 - 其中历史/替代版本：`589`
 
 权威核查文件：
-- `reports_raw/download_manifest_2025_full_refresh.csv`
-- `reports_raw/download_failures_2025_full_refresh.csv`
+- `reports_raw/manifests/download_manifest_2025_full_refresh.csv`
+- `reports_raw/failures/download_failures_2025_full_refresh.csv`
 
 ### 使用方法
 
@@ -89,7 +100,7 @@ python3 scripts/fetch_annual_reports_2025.py --max-pages 2
 ### 说明
 
 - 当前阶段只负责“抓取到位、可复跑、可核查”。
-- `reports_raw/` 中保留了部分历史版本 PDF，便于回溯，不等同于 canonical 口径。
+- `reports_raw/companies/` 中保留了部分历史版本 PDF，便于回溯，不等同于 canonical 口径。
 - 运行日志、临时文件、虚拟环境不纳入仓库版本控制。
 
 ### 进度记录
@@ -130,7 +141,10 @@ THU-AgentWork/
 ├── README.md                     # bilingual project guide
 ├── docs/                         # project documentation
 ├── parsed_csv/                   # parsed outputs for the next phase
-├── reports_raw/                  # raw annual report PDFs and crawl manifests
+├── reports_raw/
+│   ├── companies/                # sharded annual report PDFs
+│   ├── manifests/                # successful download manifests
+│   └── failures/                 # failure logs
 ├── scripts/                      # crawler and helper scripts
 └── tmp/                          # local temporary directory (ignored)
 ```
@@ -139,22 +153,30 @@ Key paths:
 - `scripts/fetch_annual_reports_2025.py`: main crawler
 - `scripts/run_parallel_fetch_2025.sh`: helper for parallel crawl runs
 - `scripts/push_untracked_pdf_batch.sh`: helper for batched PDF commits/pushes
-- `reports_raw/`: PDFs, manifest CSVs, and failure CSVs
+- `reports_raw/companies/`: sharded PDF corpus
+- `reports_raw/manifests/`: manifest CSVs
+- `reports_raw/failures/`: failure CSVs
 - `parsed_csv/`: reserved for the parsing stage
 - `docs/`: design and project documents
 
-If `reports_raw/companies/` is sharded later, the directory names should include both the code prefix and its meaning:
+`reports_raw/companies/` is sharded by stock-code prefix, with directory names carrying both the prefix and its meaning:
 
 ```text
 companies/
 ├── 000_sz_main/    # SZSE main board (common 000 prefix)
 ├── 001_sz_main/    # SZSE main board (001 prefix)
 ├── 002_sz_main/    # historical SME-board code range, now under main-board scope
+├── 003_sz_main/    # SZSE main board (003 prefix)
+├── 200_sz_b/       # SZSE B shares
+├── 201_sz_b/       # SZSE B shares (rare special prefix)
 ├── 300_chinext/    # ChiNext
+├── 301_chinext/    # ChiNext (301 prefix)
 ├── 600_sh_main/    # SSE main board
 ├── 601_sh_main/    # SSE main board
 ├── 603_sh_main/    # SSE main board
+├── 605_sh_main/    # SSE main board (605 prefix)
 ├── 688_star/       # STAR Market
+├── 689_star/       # STAR Market / related special prefix
 ├── 900_sh_b/       # SSE B shares
 └── 920_bse/        # Beijing Stock Exchange
 ```
@@ -171,8 +193,8 @@ As of the latest full verification run:
 - Historical/replaced versions retained: `589`
 
 Verification outputs:
-- `reports_raw/download_manifest_2025_full_refresh.csv`
-- `reports_raw/download_failures_2025_full_refresh.csv`
+- `reports_raw/manifests/download_manifest_2025_full_refresh.csv`
+- `reports_raw/failures/download_failures_2025_full_refresh.csv`
 
 ### Usage
 
@@ -196,7 +218,7 @@ python3 scripts/fetch_annual_reports_2025.py --max-pages 2
 ### Notes
 
 - This phase is limited to download, reproducibility, and traceable verification.
-- `reports_raw/` intentionally keeps some historical PDF versions for auditability; that is different from the canonical deduplicated set.
+- `reports_raw/companies/` intentionally keeps some historical PDF versions for auditability; that is different from the canonical deduplicated set.
 - Runtime logs, temporary files, and local virtual environments are excluded from version control.
 
 ### Progress
