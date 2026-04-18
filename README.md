@@ -67,3 +67,6 @@ python3 scripts/fetch_annual_reports_2025.py --max-pages 2
 - 2026-04-19 (checkpoint-2):
   - resumed full-window crawl after push and reached local PDF count `894`.
   - continuing with small-batch commit/push strategy during full crawl.
+- 2026-04-19 (checkpoint-3):
+  - another full-window pass reached local PDF count `919`.
+  - crawl/push loop remains stable with incremental batches.
