@@ -61,3 +61,6 @@ python3 scripts/fetch_annual_reports_2025.py --max-pages 2
     - disabled system proxy auto-discovery in urllib opener
     - added periodic page-fetch progress logs
   - resumed segmented crawl and increased local PDF count to 669.
+- 2026-04-19 (checkpoint):
+  - full-window crawl progressed to download stage with stable pagination (`141` pages).
+  - local PDF count reached `801` and was checkpointed for incremental push.
