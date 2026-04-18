@@ -36,6 +36,22 @@ THU-AgentWork/
 - `parsed_csv/`：为下一阶段 PDF 解析结果预留
 - `docs/`：保存设计文档、说明文档
 
+如果后续对 `reports_raw/companies/` 做分桶整理，建议目录直接写成带说明的形式：
+
+```text
+companies/
+├── 000_sz_main/    # 深市主板（常见 000 前缀）
+├── 001_sz_main/    # 深市主板（001 前缀）
+├── 002_sz_main/    # 深市原中小板代码段，现并入主板口径
+├── 300_chinext/    # 创业板
+├── 600_sh_main/    # 沪市主板
+├── 601_sh_main/    # 沪市主板
+├── 603_sh_main/    # 沪市主板
+├── 688_star/       # 科创板
+├── 900_sh_b/       # 沪市 B 股
+└── 920_bse/        # 北交所
+```
+
 ### 当前数据状态
 
 截至最新一次完整性核查：
@@ -126,6 +142,22 @@ Key paths:
 - `reports_raw/`: PDFs, manifest CSVs, and failure CSVs
 - `parsed_csv/`: reserved for the parsing stage
 - `docs/`: design and project documents
+
+If `reports_raw/companies/` is sharded later, the directory names should include both the code prefix and its meaning:
+
+```text
+companies/
+├── 000_sz_main/    # SZSE main board (common 000 prefix)
+├── 001_sz_main/    # SZSE main board (001 prefix)
+├── 002_sz_main/    # historical SME-board code range, now under main-board scope
+├── 300_chinext/    # ChiNext
+├── 600_sh_main/    # SSE main board
+├── 601_sh_main/    # SSE main board
+├── 603_sh_main/    # SSE main board
+├── 688_star/       # STAR Market
+├── 900_sh_b/       # SSE B shares
+└── 920_bse/        # Beijing Stock Exchange
+```
 
 ### Current Data Status
 
