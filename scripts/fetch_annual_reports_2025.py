@@ -70,6 +70,16 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--retry", type=int, default=3, help="Retry count for query/download")
     parser.add_argument("--max-pages", type=int, default=0, help="Limit fetched pages for testing. 0 = all")
     parser.add_argument("--timeout", type=int, default=25, help="HTTP timeout seconds")
+    parser.add_argument(
+        "--sec-prefixes",
+        default="",
+        help='Optional stock code prefixes, e.g. "000,001,002,300,600,601,603,688,920"',
+    )
+    parser.add_argument(
+        "--manifest-suffix",
+        default="",
+        help='Optional suffix for output CSV names, e.g. "_000_300"',
+    )
     return parser.parse_args()
 
 
@@ -231,6 +241,19 @@ def normalize_records(candidates: Iterable[Dict]) -> List[ReportRecord]:
     return records
 
 
+def parse_sec_prefixes(raw: str) -> Tuple[str, ...]:
+    if not raw:
+        return ()
+    prefixes = [part.strip() for part in raw.split(",")]
+    return tuple(part for part in prefixes if part)
+
+
+def filter_by_sec_prefixes(records: Iterable[ReportRecord], prefixes: Tuple[str, ...]) -> List[ReportRecord]:
+    if not prefixes:
+        return list(records)
+    return [rec for rec in records if rec.sec_code.startswith(prefixes)]
+
+
 def dedupe_latest(records: Iterable[ReportRecord]) -> List[ReportRecord]:
     latest: Dict[Tuple[str, int], ReportRecord] = {}
     for rec in records:
@@ -343,7 +366,9 @@ def main() -> None:
         max_pages=args.max_pages,
     )
     filtered = normalize_records(candidates)
-    deduped = dedupe_latest(filtered)
+    sec_prefixes = parse_sec_prefixes(args.sec_prefixes)
+    filtered_by_prefix = filter_by_sec_prefixes(filtered, sec_prefixes)
+    deduped = dedupe_latest(filtered_by_prefix)
 
     manifest_rows, failure_rows = download_reports(
         records=deduped,
@@ -353,8 +378,9 @@ def main() -> None:
         timeout=args.timeout,
     )
 
-    manifest_path = out_dir / "download_manifest_2025.csv"
-    failures_path = out_dir / "download_failures_2025.csv"
+    manifest_suffix = args.manifest_suffix or ""
+    manifest_path = out_dir / f"download_manifest_2025{manifest_suffix}.csv"
+    failures_path = out_dir / f"download_failures_2025{manifest_suffix}.csv"
 
     write_csv(
         manifest_path,
@@ -385,6 +411,8 @@ def main() -> None:
     print("== Summary ==")
     print(f"Candidates fetched: {len(candidates)}")
     print(f"Filtered (2025 full annual reports): {len(filtered)}")
+    if sec_prefixes:
+        print(f"After sec-prefix filter ({','.join(sec_prefixes)}): {len(filtered_by_prefix)}")
     print(f"Deduped (latest by secCode+year): {len(deduped)}")
     print(f"Download success: {len(manifest_rows)}")
     print(f"Download failed: {len(failure_rows)}")
