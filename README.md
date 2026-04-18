@@ -70,3 +70,6 @@ python3 scripts/fetch_annual_reports_2025.py --max-pages 2
 - 2026-04-19 (checkpoint-3):
   - another full-window pass reached local PDF count `919`.
   - crawl/push loop remains stable with incremental batches.
+- 2026-04-19 (parallel checkpoint):
+  - enabled parallel crawling with multiple agent-assisted script upgrades.
+  - switched to date-window shards; local PDF count reached `1466`.
