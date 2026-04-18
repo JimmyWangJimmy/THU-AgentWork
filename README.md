@@ -76,3 +76,19 @@ python3 scripts/fetch_annual_reports_2025.py --max-pages 2
 - 2026-04-19 (refresh checkpoint):
   - completed a jan-apr refresh run with deduped `1494` records and `0` failures.
   - local PDF count reached `2083`.
+- 2026-04-19 (full refresh verification):
+  - completed a full-window refresh run and generated:
+    - `reports_raw/download_manifest_2025_full_refresh.csv`
+    - `reports_raw/download_failures_2025_full_refresh.csv`
+  - authoritative full-refresh result:
+    - candidates fetched: `4230`
+    - filtered full annual reports: `2122`
+    - deduped latest reports: `1494`
+    - download failures: `0`
+  - integrity check result:
+    - manifest rows: `1494`
+    - missing files from manifest: `0`
+    - empty files from manifest: `0`
+  - current raw PDF inventory in `reports_raw/`: `2083`
+    - canonical latest-version set: `1494`
+    - extra non-canonical historical/replaced versions retained: `589`
