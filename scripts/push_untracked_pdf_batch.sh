@@ -13,8 +13,11 @@ if ! [[ "$BATCH_SIZE" =~ ^[1-9][0-9]*$ ]]; then
   exit 1
 fi
 
-mapfile -t pdf_files < <(
-  git ls-files --others --exclude-standard -- 'reports_raw/*.pdf' 'reports_raw/**/*.pdf' \
+pdf_files=()
+while IFS= read -r pdf_file; do
+  pdf_files+=("$pdf_file")
+done < <(
+  git -c core.quotepath=off ls-files --others --exclude-standard -- 'reports_raw/*.pdf' 'reports_raw/**/*.pdf' \
     | head -n "$BATCH_SIZE"
 )
 
