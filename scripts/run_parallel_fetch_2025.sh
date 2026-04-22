@@ -1,18 +1,20 @@
 #!/usr/bin/env bash
 #
 # Usage:
-#   bash scripts/run_parallel_fetch_2025.sh [START_DATE] [END_DATE] [OUT_DIR] [RETRY] [TIMEOUT]
+#   bash scripts/run_parallel_fetch_2025.sh [REPORT_YEAR] [START_DATE] [END_DATE] [OUT_DIR] [RETRY] [TIMEOUT] [PAGE_DELAY]
 # Example:
-#   bash scripts/run_parallel_fetch_2025.sh 2025-01-01 2026-12-31 reports_raw 3 25
+#   bash scripts/run_parallel_fetch_2025.sh 2024 2024-01-01 2025-12-31 reports_raw 3 25 0.5
 #
 
 set -u
 
-START_DATE="${1:-2025-01-01}"
-END_DATE="${2:-2026-12-31}"
-OUT_DIR="${3:-reports_raw}"
-RETRY="${4:-3}"
-TIMEOUT="${5:-25}"
+REPORT_YEAR="${1:-2025}"
+START_DATE="${2:-2025-01-01}"
+END_DATE="${3:-2026-12-31}"
+OUT_DIR="${4:-reports_raw}"
+RETRY="${5:-3}"
+TIMEOUT="${6:-25}"
+PAGE_DELAY="${7:-0}"
 
 PREFIXES=(000 001 002 300 600 601 603 688 920)
 
@@ -30,17 +32,19 @@ pids=()
 prefixes=()
 logs=()
 
-echo "[start] START_DATE=${START_DATE} END_DATE=${END_DATE} OUT_DIR=${OUT_DIR} RETRY=${RETRY} TIMEOUT=${TIMEOUT}"
+echo "[start] REPORT_YEAR=${REPORT_YEAR} START_DATE=${START_DATE} END_DATE=${END_DATE} OUT_DIR=${OUT_DIR} RETRY=${RETRY} TIMEOUT=${TIMEOUT} PAGE_DELAY=${PAGE_DELAY}"
 echo "[start] prefixes: ${PREFIXES[*]}"
 
 for prefix in "${PREFIXES[@]}"; do
-  log_file="${OUT_DIR}/logs/fetch_2025_${prefix}.log"
+  log_file="${OUT_DIR}/logs/fetch_${REPORT_YEAR}_${prefix}.log"
   python3 "${PY_SCRIPT}" \
+    --report-year "${REPORT_YEAR}" \
     --start-date "${START_DATE}" \
     --end-date "${END_DATE}" \
     --out-dir "${OUT_DIR}" \
     --retry "${RETRY}" \
     --timeout "${TIMEOUT}" \
+    --page-delay "${PAGE_DELAY}" \
     --sec-prefixes "${prefix}" \
     --manifest-suffix "_${prefix}" \
     >"${log_file}" 2>&1 &

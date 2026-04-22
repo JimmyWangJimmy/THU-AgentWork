@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Fetch 2025 A-share annual report PDFs from CNINFO.
+"""Fetch annual report PDFs from CNINFO for a target report year.
 
 Output:
-1) reports_raw/companies/<shard>/<stock_code>_<company_name>/2025/<announcement_id>.pdf
-2) reports_raw/manifests/download_manifest_2025.csv
-3) reports_raw/failures/download_failures_2025.csv
+1) reports_raw/companies/<shard>/<stock_code>_<company_name>/<report_year>/<announcement_id>.pdf
+2) reports_raw/manifests/download_manifest_<report_year>.csv
+3) reports_raw/failures/download_failures_<report_year>.csv
 """
 
 from __future__ import annotations
@@ -21,6 +21,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Tuple
+from urllib.error import HTTPError
 from urllib.parse import urlencode, urljoin
 from urllib.request import ProxyHandler, Request, build_opener
 
@@ -80,7 +81,8 @@ class ReportRecord:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Fetch 2025 A-share annual report PDFs from CNINFO.")
+    parser = argparse.ArgumentParser(description="Fetch A-share annual report PDFs from CNINFO.")
+    parser.add_argument("--report-year", type=int, default=2025, help="Target report year, e.g. 2024 or 2025")
     parser.add_argument("--start-date", default="2025-01-01", help="Query start date, format YYYY-MM-DD")
     parser.add_argument("--end-date", default="2026-12-31", help="Query end date, format YYYY-MM-DD")
     parser.add_argument("--out-dir", default="reports_raw", help="Output directory for PDF files and CSVs")
@@ -88,6 +90,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--retry", type=int, default=3, help="Retry count for query/download")
     parser.add_argument("--max-pages", type=int, default=0, help="Limit fetched pages for testing. 0 = all")
     parser.add_argument("--timeout", type=int, default=25, help="HTTP timeout seconds")
+    parser.add_argument("--page-delay", type=float, default=0.0, help="Sleep seconds between query pages")
     parser.add_argument(
         "--sec-prefixes",
         default="",
@@ -115,6 +118,13 @@ def post_json_with_retry(payload: Dict[str, str], retries: int, timeout: int) ->
             with HTTP_OPENER.open(req, timeout=timeout) as resp:
                 body = resp.read().decode("utf-8", errors="ignore")
                 return json.loads(body)
+        except HTTPError as exc:
+            last_error = exc
+            if attempt < retries:
+                if exc.code == 403:
+                    time.sleep(8 + random.uniform(0, 2))
+                else:
+                    backoff_sleep(attempt)
         except Exception as exc:  # noqa: BLE001
             last_error = exc
             if attempt < retries:
@@ -157,9 +167,9 @@ def report_year_from_title(title: str) -> Optional[int]:
     return int(m.group(1))
 
 
-def is_target_2025_report(title: str) -> bool:
+def is_target_report(title: str, report_year: int) -> bool:
     cleaned = strip_markup(title)
-    return "2025年年度报告" in cleaned and "摘要" not in cleaned
+    return f"{report_year}年年度报告" in cleaned and "摘要" not in cleaned
 
 
 def sanitize_component(name: str) -> str:
@@ -179,11 +189,13 @@ def to_iso_time(ms: int) -> str:
 
 
 def fetch_candidate_announcements(
+    report_year: int,
     start_date: str,
     end_date: str,
     retries: int,
     timeout: int,
     max_pages: int,
+    page_delay: float,
 ) -> List[Dict]:
     page_num = 1
     page_size = 30
@@ -197,7 +209,7 @@ def fetch_candidate_announcements(
             "column": "szse",
             "tabName": "fulltext",
             "plate": "",
-            "searchkey": "2025年年度报告",
+            "searchkey": f"{report_year}年年度报告",
             "secid": "",
             "category": "category_ndbg_szsh",
             "seDate": f"{start_date}~{end_date}",
@@ -221,22 +233,24 @@ def fetch_candidate_announcements(
         if total_pages and page_num >= total_pages:
             break
 
+        if page_delay > 0:
+            time.sleep(page_delay)
         page_num += 1
 
     return all_announcements
 
 
-def normalize_records(candidates: Iterable[Dict]) -> List[ReportRecord]:
+def normalize_records(candidates: Iterable[Dict], report_year: int) -> List[ReportRecord]:
     records: List[ReportRecord] = []
     for item in candidates:
         title = strip_markup(item.get("announcementTitle", ""))
-        if not is_target_2025_report(title):
+        if not is_target_report(title, report_year):
             continue
         if item.get("adjunctType", "").upper() != "PDF":
             continue
 
-        report_year = report_year_from_title(title)
-        if report_year != 2025:
+        detected_report_year = report_year_from_title(title)
+        if detected_report_year != report_year:
             continue
 
         sec_code = str(item.get("secCode", "")).strip()
@@ -258,7 +272,7 @@ def normalize_records(candidates: Iterable[Dict]) -> List[ReportRecord]:
                 announcement_time_iso=to_iso_time(announcement_time_ms),
                 adjunct_url=adjunct_url,
                 source_url=urljoin(DOWNLOAD_BASE_URL, adjunct_url),
-                report_year=report_year,
+                report_year=detected_report_year,
             )
         )
     return records
@@ -295,7 +309,7 @@ def dedupe_latest(records: Iterable[ReportRecord]) -> List[ReportRecord]:
 def build_target_path(out_dir: Path, rec: ReportRecord) -> Path:
     company_dir_name = f"{rec.sec_code}_{sanitize_component(rec.sec_name)}"
     shard_dir_name = shard_dir_for_code(rec.sec_code)
-    return out_dir / "companies" / shard_dir_name / company_dir_name / "2025" / f"{rec.announcement_id}.pdf"
+    return out_dir / "companies" / shard_dir_name / company_dir_name / str(rec.report_year) / f"{rec.announcement_id}.pdf"
 
 
 def write_csv(path: Path, fieldnames: List[str], rows: List[Dict[str, str]]) -> None:
@@ -378,18 +392,20 @@ def main() -> None:
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    print("== 2025 A-share annual report fetch started ==")
+    print(f"== {args.report_year} A-share annual report fetch started ==")
     print(f"Date range: {args.start_date} ~ {args.end_date}")
     print(f"Output dir: {out_dir.resolve()}")
 
     candidates = fetch_candidate_announcements(
+        report_year=args.report_year,
         start_date=args.start_date,
         end_date=args.end_date,
         retries=args.retry,
         timeout=args.timeout,
         max_pages=args.max_pages,
+        page_delay=args.page_delay,
     )
-    filtered = normalize_records(candidates)
+    filtered = normalize_records(candidates, report_year=args.report_year)
     sec_prefixes = parse_sec_prefixes(args.sec_prefixes)
     filtered_by_prefix = filter_by_sec_prefixes(filtered, sec_prefixes)
     deduped = dedupe_latest(filtered_by_prefix)
@@ -403,8 +419,8 @@ def main() -> None:
     )
 
     manifest_suffix = args.manifest_suffix or ""
-    manifest_path = out_dir / "manifests" / f"download_manifest_2025{manifest_suffix}.csv"
-    failures_path = out_dir / "failures" / f"download_failures_2025{manifest_suffix}.csv"
+    manifest_path = out_dir / "manifests" / f"download_manifest_{args.report_year}{manifest_suffix}.csv"
+    failures_path = out_dir / "failures" / f"download_failures_{args.report_year}{manifest_suffix}.csv"
 
     write_csv(
         manifest_path,
@@ -434,7 +450,7 @@ def main() -> None:
 
     print("== Summary ==")
     print(f"Candidates fetched: {len(candidates)}")
-    print(f"Filtered (2025 full annual reports): {len(filtered)}")
+    print(f"Filtered ({args.report_year} full annual reports): {len(filtered)}")
     if sec_prefixes:
         print(f"After sec-prefix filter ({','.join(sec_prefixes)}): {len(filtered_by_prefix)}")
     print(f"Deduped (latest by secCode+year): {len(deduped)}")
